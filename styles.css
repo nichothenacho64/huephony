@@ -1,0 +1,84 @@
+:root {
+    --background: #1e1e1e;
+    --keyboard-colour: #2c2c2c;
+    --key-colour: #1a1a1a;
+    --empty-colour: #555;
+
+    --key-size: 150px; /* ! fully dynamic simply based off this value */
+    --key-font-size: calc(var(--key-size) / 2); 
+    --key-gap: calc(var(--key-size) / 13); 
+}
+
+html, body {
+    overflow: hidden;
+    -webkit-overflow-scrolling: auto; /* for iOS */
+    overscroll-behavior: none; /* prevents scroll chaining */
+}
+
+body {
+    background-color: var(--background);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    font-family: "Avenir", sans-serif !important;
+    color: white !important;
+}
+
+#gradient {
+    width: 100%;
+    height: 100%;
+    background: conic-gradient(
+        red,
+        cyan,
+        magenta,
+        red
+    );
+}
+
+.keyboard {
+    display: grid;
+    grid-template-columns: repeat(7, var(--key-size));
+    gap: var(--key-gap);
+    padding: var(--key-gap);
+    background-color: var(--keyboard-colour);
+    border-radius: calc(var(--key-gap) * 2);
+}
+
+.key {
+    font-weight: bold;
+    width: var(--key-size);
+    height: var(--key-size);
+    background-color: var(--key-colour);
+    border-radius: 20px;
+    font-size: var(--key-font-size);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+#start {
+    font-weight: bold;
+    padding: 20px;
+    display: initial;
+    width: initial;
+    height: initial;
+    z-index: 1; /* gotta be in front of the modal */
+}
+
+.overlay { /* making this match the EXACT size of the modal via absolute positioning */
+    position: absolute;
+    width: calc(var(--key-size) * 7 + var(--key-gap) * 8); 
+    height: calc(var(--key-size) * 4 + var(--key-gap) * 5);
+    border-radius: calc(var(--key-gap) * 2);
+    background-color: var(--keyboard-colour);
+}
+
+.empty {
+    background-color: var(--empty-colour);
+}
+
+a {
+    text-decoration: none;
+    color: white;
+}
