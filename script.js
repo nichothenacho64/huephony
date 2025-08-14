@@ -1,3 +1,18 @@
+let defaultStartHue = 0;
+
+const defaultSaturation = 100;
+const defaultLightness = 50;
+const resetKey = "X";
+
+const letters = [
+    "A", "B", "C", "D", "E", "F", "G",
+    "H", "I", "J", "K", "L", "M",
+    "N", "O", "P", "Q", "R", "S",
+    "T", "U", "V", "W", "X", "Y", "Z"
+];
+
+let backgroundColours = JSON.parse(localStorage.getItem("backgroundColours")) || [];
+
 function hslToHex(hueDegrees, saturationPercent, lightnessPercent) {
     let saturation = saturationPercent / 100; // convert percentages to a range of 0 to 1
     let lightness = lightnessPercent / 100;
@@ -27,33 +42,72 @@ function hslToHex(hueDegrees, saturationPercent, lightnessPercent) {
 
     let toHex = value => Math.round((value + matchValue) * 255)
                                 .toString(16)
-                                .padStart(2, '0');
+                                .padStart(2, "0");
 
     return `#${toHex(red)}${toHex(green)}${toHex(blue)}`;
 }
 
+function getLetterColour(letter, startHue = 0) {
+    const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
+    const index = letters.indexOf(letter.toUpperCase());
+    if (index === -1) {
+        throw new Error(`Invalid letter: ${letter}`);
+    }
+    const hue = (startHue + (360 / letters.length) * index) % 360;
+    return hslToHex(hue, defaultSaturation, defaultLightness);
+}
 
 function assignLetterHoverColours(startHue = 0) {
-    const letters = [
-        "A", "B", "C", "D", "E", "F", "G",
-        "H", "I", "J", "K", "L", "M",
-        "N", "O", "P", "Q", "R", "S",
-        "T", "U", "V", "W", "X", "Y", "Z"
-    ];
-    const styleSheet = document.createElement('style');
+    const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
+    const styleSheet = document.createElement("style");
 
-    letters.forEach((letter, i) => {
-        const hue = (startHue + 360 / letters.length * i) % 360;
-        const hex = hslToHex(hue, 100, 50);
+    letters.forEach(letter => {
+        const hex = getLetterColour(letter, startHue);
         styleSheet.innerHTML += `
-            #${letter}:active {
+            #${letter}:active, #${letter}:hover {
                 background-color: ${hex};
             }
         `;
     });
+
     document.head.appendChild(styleSheet);
 }
 
-document.addEventListener('DOMContentLoaded', () => {
-    assignLetterHoverColours(0);
+function getNewGradientColour() { // a feedback function
+    let previousKey = localStorage.getItem("previousKeyClicked");
+
+    if (previousKey) {
+        console.log(`Key clicked: ${previousKey}`);
+        setNewGradient(getLetterColour(previousKey, defaultStartHue))
+        localStorage.removeItem("previousKeyClicked"); 
+    }
+
+    document.querySelectorAll(".key").forEach(key => {
+    key.addEventListener("click", function() {
+        let currentKey = this.textContent.trim()
+        localStorage.setItem("previousKeyClicked", currentKey);
+        if (currentKey === resetKey) {
+            localStorage.removeItem("backgroundColours");
+        }
+    });
+
+    });
+}
+
+function setNewGradient(newColour) {
+    let gradientBackground = document.getElementById("gradient");
+    if (!gradientBackground) return;
+
+    if (!backgroundColours.includes(newColour)) {
+        backgroundColours.push(newColour);
+        localStorage.setItem("backgroundColours", JSON.stringify(backgroundColours));
+    }
+
+    gradientBackground.style.background = `conic-gradient(${[...backgroundColours, backgroundColours[0]].join(", ")})`;
+    console.log([...backgroundColours, backgroundColours[0]]);
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+    assignLetterHoverColours(defaultStartHue);
+    getNewGradientColour();
 });
