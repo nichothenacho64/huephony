@@ -38,7 +38,6 @@ const letterInformation = { // subject to change!!!!!
 
 const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
 
-let backgroundColours = JSON.parse(localStorage.getItem("backgroundColours")) || [];
 let disabledKeys = JSON.parse(localStorage.getItem("disabledKeys")) || [];
 
 function hslToHex(hueDegrees, saturationPercent, lightnessPercent) {
@@ -68,9 +67,7 @@ function hslToHex(hueDegrees, saturationPercent, lightnessPercent) {
         red = chroma; green = 0; blue = secondLargestComponent;
     }
 
-    let toHex = value => Math.round((value + matchValue) * 255)
-                                .toString(16)
-                                .padStart(2, "0");
+    let toHex = value => Math.round((value + matchValue) * 255).toString(16).padStart(2, "0");
 
     return `#${toHex(red)}${toHex(green)}${toHex(blue)}`;
 }
@@ -104,35 +101,27 @@ function setGradient() {
     let previousKey = localStorage.getItem("previousKeyClicked");
 
     if (previousKey && previousKey !== resetKey) {
-        addGradientColour(getLetterColour(previousKey, defaultStartHue));
+        addDisabledKey(previousKey);
         localStorage.removeItem("previousKeyClicked");
-        
         console.log(`Key clicked: '${previousKey}'`);
-        disableKey(previousKey);
-
-        if (!disabledKeys.includes(previousKey)) { // . && previousKey !== resetKey
-            disabledKeys.push(previousKey);
-            localStorage.setItem("disabledKeys", JSON.stringify(disabledKeys));
-        }
     }
-
-    addKeys();
+    limitDisabledKeys();
+    addGradientColour();
+    disabledKeys.forEach(letter => disableKey(letter));
+    getPreviousKey();
 }
 
-function addKeys() {
+function getPreviousKey() {
     document.querySelectorAll(".key").forEach(key => {
         key.addEventListener("click", function () {
             let currentKey = this.textContent.trim().toUpperCase();
             localStorage.setItem("previousKeyClicked", currentKey);
 
             if (currentKey === resetKey) {
-                localStorage.removeItem("backgroundColours");
                 localStorage.removeItem("disabledKeys");
             }
         });
     });
-
-    disabledKeys.forEach(letter => disableKey(letter));
 }
 
 function disableKey(key) {
@@ -148,22 +137,32 @@ function disableKey(key) {
     }
 }
 
+function addDisabledKey(previousKey) {
+    if (!disabledKeys.includes(previousKey)) {
+        disabledKeys.push(previousKey);
+        localStorage.setItem("disabledKeys", JSON.stringify(disabledKeys));
+    }
+}
 
-function addGradientColour(newColour) {
+function limitDisabledKeys() {
+    if (disabledKeys.length >= maxColours) { // only if the quota is not yet reached
+        console.log(disabledKeys);
+        const removedKey = disabledKeys.shift(); // removes the first key
+        localStorage.setItem("disabledKeys", JSON.stringify(disabledKeys));
+        console.log(`${removedKey} was removed from disabledKeys`);
+        // const randomIndex = Math.floor(Math.random() * disabledKeys.length);
+        // disabledKeys.splice(randomIndex, 1);
+        // console.log(`${disabledKeys[randomIndex]} was removed`)
+    }
+}
+
+
+function addGradientColour() {
     let gradientBackground = document.getElementById("gradient");
 
     if (!gradientBackground) return;
 
-    if (backgroundColours.length >= maxColours) { // only if the quota is not yet reached
-        const randomIndex = Math.floor(Math.random() * backgroundColours.length);
-        console.log(`${backgroundColours[randomIndex]} was removed`)
-        backgroundColours.splice(randomIndex, 1);
-    }
-
-    if (!backgroundColours.includes(newColour)) {
-        backgroundColours.push(newColour);
-        localStorage.setItem("backgroundColours", JSON.stringify(backgroundColours));
-    }
+    let backgroundColours = disabledKeys.map(disabledKey => letterInformation[disabledKey].colour)
 
     let gradientColours = [...backgroundColours, backgroundColours[0]].join(", ")
     gradientBackground.style.background = `conic-gradient(${gradientColours})`;
@@ -172,6 +171,5 @@ function addGradientColour(newColour) {
 
 document.addEventListener("DOMContentLoaded", () => {
     assignLetterHoverColours(defaultStartHue);
-    console.log(letterInformation);
     setGradient();
 });
