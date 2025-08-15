@@ -61,6 +61,13 @@ body {
     align-items: center;
 }
 
+
+.key.disabled {
+    pointer-events: none;
+    color: transparent;
+    transition: background-color 2.4s ease, opacity 0.4s ease, transform 1.3s ease;
+}
+
 .overlay { /* making this match the EXACT size of the modal via absolute positioning */
     position: absolute;
     width: calc(var(--key-size) * 7 + var(--key-gap) * 8); 

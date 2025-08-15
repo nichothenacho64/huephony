@@ -2,16 +2,44 @@ let defaultStartHue = 0;
 
 const defaultSaturation = 100;
 const defaultLightness = 50;
-const resetKey = "X";
+const resetKey = "⌫";
+const maxColours = 6;
 
-const letters = [
-    "A", "B", "C", "D", "E", "F", "G",
-    "H", "I", "J", "K", "L", "M",
-    "N", "O", "P", "Q", "R", "S",
-    "T", "U", "V", "W", "X", "Y", "Z"
-];
+// get a chatGPT description for each colour
+
+const letterInformation = { // subject to change!!!!!
+    "A": { colourLabel: "Colour A", soundLabel: "Sound A" },
+    "B": { colourLabel: "Colour B", soundLabel: "Sound B" },
+    "C": { colourLabel: "Colour C", soundLabel: "Sound C" },
+    "D": { colourLabel: "Colour D", soundLabel: "Sound D" },
+    "E": { colourLabel: "Colour E", soundLabel: "Sound E" },
+    "F": { colourLabel: "Colour F", soundLabel: "Sound F" },
+    "G": { colourLabel: "Colour G", soundLabel: "Sound G" },
+    "H": { colourLabel: "Colour H", soundLabel: "Sound H" },
+    "I": { colourLabel: "Colour I", soundLabel: "Sound I" },
+    "J": { colourLabel: "Colour J", soundLabel: "Sound J" },
+    "K": { colourLabel: "Colour K", soundLabel: "Sound K" },
+    "L": { colourLabel: "Colour L", soundLabel: "Sound L" },
+    "M": { colourLabel: "Colour M", soundLabel: "Sound M" },
+    "N": { colourLabel: "Colour N", soundLabel: "Sound N" },
+    "O": { colourLabel: "Colour O", soundLabel: "Sound O" },
+    "P": { colourLabel: "Colour P", soundLabel: "Sound P" },
+    "Q": { colourLabel: "Colour Q", soundLabel: "Sound Q" },
+    "R": { colourLabel: "Colour R", soundLabel: "Sound R" },
+    "S": { colourLabel: "Colour S", soundLabel: "Sound S" },
+    "T": { colourLabel: "Colour T", soundLabel: "Sound T" },
+    "U": { colourLabel: "Colour U", soundLabel: "Sound U" },
+    "V": { colourLabel: "Colour V", soundLabel: "Sound V" },
+    "W": { colourLabel: "Colour W", soundLabel: "Sound W" },
+    "X": { colourLabel: "Colour X", soundLabel: "Sound X" },
+    "Y": { colourLabel: "Colour Y", soundLabel: "Sound Y" },
+    "Z": { colourLabel: "Colour Z", soundLabel: "Sound Z" }
+};
+
+const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
 
 let backgroundColours = JSON.parse(localStorage.getItem("backgroundColours")) || [];
+let disabledKeys = JSON.parse(localStorage.getItem("disabledKeys")) || [];
 
 function hslToHex(hueDegrees, saturationPercent, lightnessPercent) {
     let saturation = saturationPercent / 100; // convert percentages to a range of 0 to 1
@@ -48,7 +76,6 @@ function hslToHex(hueDegrees, saturationPercent, lightnessPercent) {
 }
 
 function getLetterColour(letter, startHue = 0) {
-    const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
     const index = letters.indexOf(letter.toUpperCase());
     if (index === -1) {
         throw new Error(`Invalid letter: ${letter}`);
@@ -58,11 +85,11 @@ function getLetterColour(letter, startHue = 0) {
 }
 
 function assignLetterHoverColours(startHue = 0) {
-    const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
     const styleSheet = document.createElement("style");
 
     letters.forEach(letter => {
         const hex = getLetterColour(letter, startHue);
+        letterInformation[letter]["colour"] = hex;
         styleSheet.innerHTML += `
             #${letter}:active, #${letter}:hover {
                 background-color: ${hex};
@@ -73,41 +100,78 @@ function assignLetterHoverColours(startHue = 0) {
     document.head.appendChild(styleSheet);
 }
 
-function getNewGradientColour() { // a feedback function
+function setGradient() {
     let previousKey = localStorage.getItem("previousKeyClicked");
 
-    if (previousKey) {
-        console.log(`Key clicked: ${previousKey}`);
-        setNewGradient(getLetterColour(previousKey, defaultStartHue))
-        localStorage.removeItem("previousKeyClicked"); 
+    if (previousKey && previousKey !== resetKey) {
+        addGradientColour(getLetterColour(previousKey, defaultStartHue));
+        localStorage.removeItem("previousKeyClicked");
+        
+        console.log(`Key clicked: '${previousKey}'`);
+        disableKey(previousKey);
+
+        if (!disabledKeys.includes(previousKey)) { // . && previousKey !== resetKey
+            disabledKeys.push(previousKey);
+            localStorage.setItem("disabledKeys", JSON.stringify(disabledKeys));
+        }
     }
 
-    document.querySelectorAll(".key").forEach(key => {
-    key.addEventListener("click", function() {
-        let currentKey = this.textContent.trim()
-        localStorage.setItem("previousKeyClicked", currentKey);
-        if (currentKey === resetKey) {
-            localStorage.removeItem("backgroundColours");
-        }
-    });
-
-    });
+    addKeys();
 }
 
-function setNewGradient(newColour) {
+function addKeys() {
+    document.querySelectorAll(".key").forEach(key => {
+        key.addEventListener("click", function () {
+            let currentKey = this.textContent.trim().toUpperCase();
+            localStorage.setItem("previousKeyClicked", currentKey);
+
+            if (currentKey === resetKey) {
+                localStorage.removeItem("backgroundColours");
+                localStorage.removeItem("disabledKeys");
+            }
+        });
+    });
+
+    disabledKeys.forEach(letter => disableKey(letter));
+}
+
+function disableKey(key) {
+    const keyElement = document.getElementById(key);
+    if (keyElement) {
+        requestAnimationFrame(() => {
+            keyElement.classList.add("disabled");
+            keyElement.setAttribute("disabled", "true");
+            keyElement.style.background = getLetterColour(key, defaultStartHue);
+        }); // console.log(`Disabled key: ${key}`);
+    } else {
+        setTimeout(() => disableKey(key), 1000);
+    }
+}
+
+
+function addGradientColour(newColour) {
     let gradientBackground = document.getElementById("gradient");
+
     if (!gradientBackground) return;
+
+    if (backgroundColours.length >= maxColours) { // only if the quota is not yet reached
+        const randomIndex = Math.floor(Math.random() * backgroundColours.length);
+        console.log(`${backgroundColours[randomIndex]} was removed`)
+        backgroundColours.splice(randomIndex, 1);
+    }
 
     if (!backgroundColours.includes(newColour)) {
         backgroundColours.push(newColour);
         localStorage.setItem("backgroundColours", JSON.stringify(backgroundColours));
     }
 
-    gradientBackground.style.background = `conic-gradient(${[...backgroundColours, backgroundColours[0]].join(", ")})`;
-    console.log([...backgroundColours, backgroundColours[0]]);
+    let gradientColours = [...backgroundColours, backgroundColours[0]].join(", ")
+    gradientBackground.style.background = `conic-gradient(${gradientColours})`;
+    console.log(gradientColours)
 }
 
 document.addEventListener("DOMContentLoaded", () => {
     assignLetterHoverColours(defaultStartHue);
-    getNewGradientColour();
+    console.log(letterInformation);
+    setGradient();
 });
