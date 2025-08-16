@@ -2,10 +2,11 @@
     "name": "huephony",
     "version": "1.0.0",
     "description": "An interactive light and sound apparatus, creating a collaborative colour and sonic immersive environment. Utilises web sockets for real-time user feedback, creating acousmatic soundscapes paired with multicoloured visuals",
-    "main": "script.js",
+    "main": "server.js",
+    "type": "module",
     "scripts": {
-        "test": "echo \"Error: no test specified\" && exit 1",
-        "start": "node server.js"
+        "start": "node server.mjs",
+        "test": "echo \"Error: no test specified\" && exit 1"
     },
     "repository": {
         "type": "git",

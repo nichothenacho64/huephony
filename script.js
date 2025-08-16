@@ -1,12 +1,12 @@
-let defaultStartHue = 0;
-
+const startHue = 0;
 const defaultSaturation = 100;
 const defaultLightness = 50;
 const resetKey = "⌫";
 const maxColours = 6;
 
-// get a chatGPT description for each colour
+const ws = new WebSocket(resolveWebSocketUrl());
 
+const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
 const letterInformation = { // subject to change!!!!!
     "A": { colourLabel: "Colour A", soundLabel: "Sound A" },
     "B": { colourLabel: "Colour B", soundLabel: "Sound B" },
@@ -36,37 +36,29 @@ const letterInformation = { // subject to change!!!!!
     "Z": { colourLabel: "Colour Z", soundLabel: "Sound Z" }
 };
 
-const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
-
 let disabledKeys = JSON.parse(localStorage.getItem("disabledKeys")) || [];
 
-// !! WEB SOCKET STUFF
-
-// Resolve WebSocket URL: ?ws=ws://IP:5500  OR default to same host
-function resolveWsUrl() {
+function resolveWebSocketUrl() {
     const qpUrl = new URLSearchParams(location.search).get("ws");
     if (qpUrl) return qpUrl;
-    if (location.hostname) return `ws://${location.hostname}:5500`;
-    // Fallback for file:// usage — replace this with the server machine's LAN IP:
-    return "ws://192.168.1.50:5500";
+    if (location.hostname) return `ws://${location.hostname}:8080`;
+    return "ws://192.168.0.25:8080";
 }
 
-const ws = new WebSocket(resolveWsUrl());
+function connectWebSocket() {
+    ws.onopen = () => console.log("Connected to WebSocket server");
 
-ws.onopen = () => console.log("Connected to WebSocket server");
-
-ws.onmessage = (event) => {
-    const data = JSON.parse(event.data);
-    if (data.type === "keyPressed") {
-        addDisabledKey(data.key);
-        setGradient();
-    } else if (data.type === "reset") {
-        disabledKeys = [];
-        setGradient();
-    }
-};
-
-// !!
+    ws.onmessage = (event) => {
+        const data = JSON.parse(event.data);
+        if (data.type === "keyPressed" && data.key !== resetKey) {
+            addDisabledKey(data.key);
+            setGradient();
+        } else if (data.type === "reset") {
+            disabledKeys = [];
+            setGradient();
+        }
+    };
+}
 
 function hslToHex(hueDegrees, saturationPercent, lightnessPercent) {
     let saturation = saturationPercent / 100; // convert percentages to a range of 0 to 1
@@ -100,7 +92,7 @@ function hslToHex(hueDegrees, saturationPercent, lightnessPercent) {
     return `#${toHex(red)}${toHex(green)}${toHex(blue)}`;
 }
 
-function getLetterColour(letter, startHue = 0) {
+function getLetterColour(letter) {
     const index = letters.indexOf(letter.toUpperCase());
     if (index === -1) {
         throw new Error(`Invalid letter: ${letter}`);
@@ -109,7 +101,7 @@ function getLetterColour(letter, startHue = 0) {
     return hslToHex(hue, defaultSaturation, defaultLightness);
 }
 
-function assignLetterHoverColours(startHue = 0) {
+function assignLetterHoverColours() {
     const styleSheet = document.createElement("style");
 
     letters.forEach(letter => {
@@ -125,20 +117,6 @@ function assignLetterHoverColours(startHue = 0) {
     document.head.appendChild(styleSheet);
 }
 
-function setGradient() {
-    let previousKey = localStorage.getItem("previousKeyClicked");
-
-    if (previousKey && previousKey !== resetKey) {
-        addDisabledKey(previousKey);
-        localStorage.removeItem("previousKeyClicked");
-        console.log(`Key clicked: '${previousKey}'`);
-    }
-    limitDisabledKeys();
-    addGradientColour();
-    disabledKeys.forEach(letter => disableKey(letter));
-    getPreviousKey();
-}
-
 function getPreviousKey() {
     document.querySelectorAll(".key").forEach(key => {
         key.addEventListener("click", function () {
@@ -149,8 +127,7 @@ function getPreviousKey() {
                 localStorage.removeItem("disabledKeys");
             }
 
-            // ! web socket stuff
-            ws.send(JSON.stringify({ type: "keyPressed", key: currentKey }));
+            ws.send(JSON.stringify({ type: "keyPressed", key: currentKey })); // ! needed?
 
             if (currentKey === resetKey) {
                 disabledKeys = [];
@@ -166,46 +143,58 @@ function disableKey(key) {
         requestAnimationFrame(() => {
             keyElement.classList.add("disabled");
             keyElement.setAttribute("disabled", "true");
-            keyElement.style.background = getLetterColour(key, defaultStartHue);
+            keyElement.style.background = getLetterColour(key, startHue);
         }); // console.log(`Disabled key: ${key}`);
     } else {
         setTimeout(() => disableKey(key), 1000);
     }
 }
 
-function addDisabledKey(previousKey) {
-    if (!disabledKeys.includes(previousKey)) {
-        disabledKeys.push(previousKey);
-        localStorage.setItem("disabledKeys", JSON.stringify(disabledKeys));
-    }
+function addDisabledKey(key) {
+  if (!key || disabledKeys.includes(key)) return;
+
+  disabledKeys.push(key);
+  localStorage.setItem("disabledKeys", JSON.stringify(disabledKeys));
 }
 
 function limitDisabledKeys() {
-    if (disabledKeys.length >= maxColours) { // only if the quota is not yet reached
-        console.log(disabledKeys);
-        const removedKey = disabledKeys.shift(); // removes the first key
+    if (disabledKeys.length >= maxColours) { 
+        const removedKey = disabledKeys.shift(); 
         localStorage.setItem("disabledKeys", JSON.stringify(disabledKeys));
         console.log(`${removedKey} was removed from disabledKeys`);
-        // const randomIndex = Math.floor(Math.random() * disabledKeys.length);
-        // disabledKeys.splice(randomIndex, 1);
-        // console.log(`${disabledKeys[randomIndex]} was removed`)
     }
 }
 
-
-function addGradientColour() {
+function addGradientColours() {
     let gradientBackground = document.getElementById("gradient");
 
     if (!gradientBackground) return;
 
-    let backgroundColours = disabledKeys.map(disabledKey => letterInformation[disabledKey].colour)
+    let backgroundColours = disabledKeys.map(key => letterInformation[key].colour)
 
     let gradientColours = [...backgroundColours, backgroundColours[0]].join(", ")
     gradientBackground.style.background = `conic-gradient(${gradientColours})`;
-    console.log(gradientColours)
+}
+
+function setGradient() {
+    let previousKey = localStorage.getItem("previousKeyClicked");
+
+    if (previousKey && previousKey !== resetKey) {
+        addDisabledKey(previousKey);
+        localStorage.removeItem("previousKeyClicked");
+        console.log(`Key clicked: '${previousKey}'`);
+    }
+    limitDisabledKeys();
+    addGradientColours();
+
+    disabledKeys.forEach(letter => disableKey(letter));
+    getPreviousKey();
+
+    console.log(disabledKeys);
 }
 
 document.addEventListener("DOMContentLoaded", () => {
-    assignLetterHoverColours(defaultStartHue);
+    connectWebSocket();
+    assignLetterHoverColours();
     setGradient();
 });

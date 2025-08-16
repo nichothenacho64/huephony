@@ -80,6 +80,10 @@ body {
     background-color: var(--empty-colour);
 }
 
+.empty:hover { /* not showing */
+    background-color: var(--background) !important;
+}
+
 a {
     text-decoration: none;
     color: white;
