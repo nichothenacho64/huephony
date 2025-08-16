@@ -42,13 +42,13 @@ let disabledKeys = JSON.parse(localStorage.getItem("disabledKeys")) || [];
 
 // !! WEB SOCKET STUFF
 
-// Resolve WebSocket URL: ?ws=ws://IP:8080  OR default to same host
+// Resolve WebSocket URL: ?ws=ws://IP:5500  OR default to same host
 function resolveWsUrl() {
     const qpUrl = new URLSearchParams(location.search).get("ws");
     if (qpUrl) return qpUrl;
-    if (location.hostname) return `ws://${location.hostname}:8080`;
+    if (location.hostname) return `ws://${location.hostname}:5500`;
     // Fallback for file:// usage — replace this with the server machine's LAN IP:
-    return "ws://192.168.1.50:8080";
+    return "ws://192.168.1.50:5500";
 }
 
 const ws = new WebSocket(resolveWsUrl());
