@@ -1,0 +1,24 @@
+{
+    "name": "huephony",
+    "version": "1.0.0",
+    "description": "An interactive light and sound apparatus, creating a collaborative colour and sonic immersive environment. Utilises web sockets for real-time user feedback, creating acousmatic soundscapes paired with multicoloured visuals",
+    "main": "script.js",
+    "scripts": {
+        "test": "echo \"Error: no test specified\" && exit 1",
+        "start": "node server.js"
+    },
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/nichothenacho64/huephony.git"
+    },
+    "keywords": [],
+    "author": "",
+    "license": "ISC",
+    "bugs": {
+        "url": "https://github.com/nichothenacho64/huephony/issues"
+    },
+    "homepage": "https://github.com/nichothenacho64/huephony#readme",
+    "dependencies": {
+        "ws": "^8.18.3"
+    }
+}
