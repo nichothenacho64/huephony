@@ -40,15 +40,23 @@ const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
 
 let disabledKeys = JSON.parse(localStorage.getItem("disabledKeys")) || [];
 
-const ws = new WebSocket("ws://192.168.0.25:5500");
+// !! WEB SOCKET STUFF
 
-ws.onopen = () => {
-    console.log("Connected to WebSocket server");
-};
+// Resolve WebSocket URL: ?ws=ws://IP:8080  OR default to same host
+function resolveWsUrl() {
+    const qpUrl = new URLSearchParams(location.search).get("ws");
+    if (qpUrl) return qpUrl;
+    if (location.hostname) return `ws://${location.hostname}:8080`;
+    // Fallback for file:// usage — replace this with the server machine's LAN IP:
+    return "ws://192.168.1.50:8080";
+}
+
+const ws = new WebSocket(resolveWsUrl());
+
+ws.onopen = () => console.log("Connected to WebSocket server");
 
 ws.onmessage = (event) => {
     const data = JSON.parse(event.data);
-
     if (data.type === "keyPressed") {
         addDisabledKey(data.key);
         setGradient();
@@ -57,6 +65,8 @@ ws.onmessage = (event) => {
         setGradient();
     }
 };
+
+// !!
 
 function hslToHex(hueDegrees, saturationPercent, lightnessPercent) {
     let saturation = saturationPercent / 100; // convert percentages to a range of 0 to 1
