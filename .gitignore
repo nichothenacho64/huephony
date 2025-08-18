@@ -156,4 +156,5 @@ resources/.arch-internal-preview.css
 
 # Custom
 .DS_Store
-assets/audio
+assets/audio_files
+assets/drones

@@ -1,10 +1,13 @@
+import { resolveWebSocketUrl, connectWebSocket } from "./webSockets.js"
+import { scheduleRandomSounds } from "./audio/audioProcessing.js" // playAudio, 
+
 const startHue = 0;
 const defaultSaturation = 100;
 const defaultLightness = 50;
 const resetKey = "⌫";
 const maxColours = 6;
 
-const ws = new WebSocket(resolveWebSocketUrl());
+const webSocket = new WebSocket(resolveWebSocketUrl());
 
 const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
 const letterInformation = { // subject to change!!!!!
@@ -36,29 +39,29 @@ const letterInformation = { // subject to change!!!!!
     "Z": { colourLabel: "Colour Z", soundLabel: "Sound Z" }
 };
 
+const worker = new SharedWorker("audio/soundWorker.js");
+const id = Math.random().toString(36).slice(2); // unique per page
+
+let audio;
+
+worker.port.onmessage = (e) => {
+    if (e.data.type === "play" && !audio) {
+        audio = new Audio("assets/drones/a_drone.wav"); // Only one page will actually play
+        audio.loop = true;
+        audio.play().catch(err => {
+            console.log("Autoplay blocked until user clicks:", err);
+        });
+    }
+};
+
+worker.port.postMessage({ type: "register", id });
+
+window.addEventListener("beforeunload", () => {
+    worker.port.postMessage({ type: "release", id });
+});
+
+
 let disabledKeys = JSON.parse(localStorage.getItem("disabledKeys")) || [];
-
-function resolveWebSocketUrl() {
-    const qpUrl = new URLSearchParams(location.search).get("ws");
-    if (qpUrl) return qpUrl;
-    if (location.hostname) return `ws://${location.hostname}:8080`;
-    return "ws://192.168.0.25:8080";
-}
-
-function connectWebSocket() {
-    ws.onopen = () => console.log("Connected to WebSocket server");
-
-    ws.onmessage = (event) => {
-        const data = JSON.parse(event.data);
-        if (data.type === "keyPressed" && data.key !== resetKey) {
-            addDisabledKey(data.key);
-            setGradient();
-        } else if (data.type === "reset") {
-            disabledKeys = [];
-            setGradient();
-        }
-    };
-}
 
 function hslToHex(hueDegrees, saturationPercent, lightnessPercent) {
     let saturation = saturationPercent / 100; // convert percentages to a range of 0 to 1
@@ -123,15 +126,13 @@ function getPreviousKey() {
             let currentKey = this.textContent.trim().toUpperCase();
             localStorage.setItem("previousKeyClicked", currentKey);
 
-            if (currentKey === resetKey) {
+            webSocket.send(JSON.stringify({ type: "keyPressed", key: currentKey })); // ! needed?
+
+            if (currentKey === resetKey) { // ! web socket additions
                 localStorage.removeItem("disabledKeys");
-            }
-
-            ws.send(JSON.stringify({ type: "keyPressed", key: currentKey })); // ! needed?
-
-            if (currentKey === resetKey) {
+                localStorage.removeItem("soundsPlaying");
                 disabledKeys = [];
-                ws.send(JSON.stringify({ type: "reset" }));
+                webSocket.send(JSON.stringify({ type: "reset" }));
             }
         });
     });
@@ -150,16 +151,18 @@ function disableKey(key) {
     }
 }
 
-function addDisabledKey(key) {
-  if (!key || disabledKeys.includes(key)) return;
+async function addDisabledKey(key) {
+    if (!key || disabledKeys.includes(key)) return;
 
-  disabledKeys.push(key);
-  localStorage.setItem("disabledKeys", JSON.stringify(disabledKeys));
+    disabledKeys.push(key);
+    localStorage.setItem("disabledKeys", JSON.stringify(disabledKeys));
+
+    // await playPersistentSound(key);
 }
 
 function limitDisabledKeys() {
-    if (disabledKeys.length >= maxColours) { 
-        const removedKey = disabledKeys.shift(); 
+    if (disabledKeys.length >= maxColours) {
+        const removedKey = disabledKeys.shift();
         localStorage.setItem("disabledKeys", JSON.stringify(disabledKeys));
         console.log(`${removedKey} was removed from disabledKeys`);
     }
@@ -176,11 +179,11 @@ function addGradientColours() {
     gradientBackground.style.background = `conic-gradient(${gradientColours})`;
 }
 
-function setGradient() {
+async function setGradient() {
     let previousKey = localStorage.getItem("previousKeyClicked");
 
     if (previousKey && previousKey !== resetKey) {
-        addDisabledKey(previousKey);
+        await addDisabledKey(previousKey);
         localStorage.removeItem("previousKeyClicked");
         console.log(`Key clicked: '${previousKey}'`);
     }
@@ -188,13 +191,20 @@ function setGradient() {
     addGradientColours();
 
     disabledKeys.forEach(letter => disableKey(letter));
-    getPreviousKey();
+    // disabledKeys.forEach(letter => playAudio(letter));
 
     console.log(disabledKeys);
 }
 
-document.addEventListener("DOMContentLoaded", () => {
-    connectWebSocket();
+document.addEventListener("DOMContentLoaded", async () => {
+    connectWebSocket(webSocket);
     assignLetterHoverColours();
-    setGradient();
+    await setGradient();
+    getPreviousKey();
+    if (!window.location.pathname.endsWith("index.html")) {
+        scheduleRandomSounds(disabledKeys);
+    }
 });
+
+// page specificity –> no sounds when on index.html, only the drone
+// add stuff in localStorage to dictate if a sound must be played within the first 10 seconds
