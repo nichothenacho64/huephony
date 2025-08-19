@@ -1,23 +1,26 @@
-export function resolveWebSocketUrl() {
+let ws;
+
+function resolveWebSocketUrl() {
     const qpUrl = new URLSearchParams(location.search).get("ws");
     if (qpUrl) return qpUrl;
     if (location.hostname) return `ws://${location.hostname}:8080`;
-    return "ws://192.168.0.25:8080";
+    return "ws://localhost:8080";
 }
 
-export function connectWebSocket(ws) {
-    ws.onopen = () => console.log("Connected to WebSocket server");
+export function connectWebSocket() {
+    if (ws && ws.readyState === WebSocket.OPEN) return ws;
 
-    ws.onmessage = async (event) => {
-        const data = JSON.parse(event.data);
-        if (data.type === "keyPressed" && data.key !== resetKey) {
-            await addDisabledKey(data.key);
-            setGradient();
-        } else if (data.type === "reset") {
-            disabledKeys = [];
-            setGradient();
-            worker.port.postMessage({ type: "stopAll" });
-            localStorage.removeItem("soundsPlaying");
-        }
+    ws = new WebSocket(resolveWebSocketUrl());
+
+    ws.onopen = () => console.log("Connected to WebSocket server");
+    ws.onclose = () => {
+        console.log("WebSocket closed, retrying...");
+        setTimeout(connectWebSocket, 2000);
     };
+
+    return ws;
+}
+
+export function getWebSocket() {
+    return ws;
 }

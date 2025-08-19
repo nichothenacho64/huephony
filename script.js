@@ -1,13 +1,12 @@
-import { resolveWebSocketUrl, connectWebSocket } from "./webSockets.js"
-import { scheduleRandomSounds } from "./audio/audioProcessing.js" // playAudio, 
-
+import { connectWebSocket } from "./webSockets.js"
+import { scheduleRandomSound } from "./audio/audioProcessing.js"
 const startHue = 0;
 const defaultSaturation = 100;
 const defaultLightness = 50;
 const resetKey = "⌫";
 const maxColours = 6;
 
-const webSocket = new WebSocket(resolveWebSocketUrl());
+const webSocket = connectWebSocket();
 
 const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
 const letterInformation = { // subject to change!!!!!
@@ -38,28 +37,6 @@ const letterInformation = { // subject to change!!!!!
     "Y": { colourLabel: "Colour Y", soundLabel: "Sound Y" },
     "Z": { colourLabel: "Colour Z", soundLabel: "Sound Z" }
 };
-
-const worker = new SharedWorker("audio/soundWorker.js");
-const id = Math.random().toString(36).slice(2); // unique per page
-
-let audio;
-
-worker.port.onmessage = (e) => {
-    if (e.data.type === "play" && !audio) {
-        audio = new Audio("assets/drones/a_drone.wav"); // Only one page will actually play
-        audio.loop = true;
-        audio.play().catch(err => {
-            console.log("Autoplay blocked until user clicks:", err);
-        });
-    }
-};
-
-worker.port.postMessage({ type: "register", id });
-
-window.addEventListener("beforeunload", () => {
-    worker.port.postMessage({ type: "release", id });
-});
-
 
 let disabledKeys = JSON.parse(localStorage.getItem("disabledKeys")) || [];
 
@@ -129,13 +106,23 @@ function getPreviousKey() {
             webSocket.send(JSON.stringify({ type: "keyPressed", key: currentKey })); // ! needed?
 
             if (currentKey === resetKey) { // ! web socket additions
-                localStorage.removeItem("disabledKeys");
-                localStorage.removeItem("soundsPlaying");
                 disabledKeys = [];
+                localStorage.removeItem("disabledKeys");
                 webSocket.send(JSON.stringify({ type: "reset" }));
             }
         });
     });
+}
+
+function playPreviousKey() {
+    if (window.location.pathname.endsWith("index.html")) {
+        let previousKey = localStorage.getItem("previousKeyClicked");
+        console.log(previousKey);
+        if (previousKey && previousKey !== resetKey) {
+            scheduleRandomSound(previousKey, webSocket);
+            localStorage.removeItem("previousKeyClicked");
+        }
+    }
 }
 
 function disableKey(key) {
@@ -149,15 +136,6 @@ function disableKey(key) {
     } else {
         setTimeout(() => disableKey(key), 1000);
     }
-}
-
-async function addDisabledKey(key) {
-    if (!key || disabledKeys.includes(key)) return;
-
-    disabledKeys.push(key);
-    localStorage.setItem("disabledKeys", JSON.stringify(disabledKeys));
-
-    // await playPersistentSound(key);
 }
 
 function limitDisabledKeys() {
@@ -174,37 +152,32 @@ function addGradientColours() {
     if (!gradientBackground) return;
 
     let backgroundColours = disabledKeys.map(key => letterInformation[key].colour)
-
     let gradientColours = [...backgroundColours, backgroundColours[0]].join(", ")
     gradientBackground.style.background = `conic-gradient(${gradientColours})`;
 }
 
-async function setGradient() {
+function setGradient() {
     let previousKey = localStorage.getItem("previousKeyClicked");
 
     if (previousKey && previousKey !== resetKey) {
-        await addDisabledKey(previousKey);
-        localStorage.removeItem("previousKeyClicked");
+        if (!disabledKeys.includes(previousKey)) {
+            disabledKeys.push(previousKey);
+            localStorage.setItem("disabledKeys", JSON.stringify(disabledKeys));
+        };
         console.log(`Key clicked: '${previousKey}'`);
     }
     limitDisabledKeys();
     addGradientColours();
 
     disabledKeys.forEach(letter => disableKey(letter));
-    // disabledKeys.forEach(letter => playAudio(letter));
 
     console.log(disabledKeys);
 }
 
-document.addEventListener("DOMContentLoaded", async () => {
+document.addEventListener("DOMContentLoaded", () => {
     connectWebSocket(webSocket);
     assignLetterHoverColours();
-    await setGradient();
+    setGradient();
     getPreviousKey();
-    if (!window.location.pathname.endsWith("index.html")) {
-        scheduleRandomSounds(disabledKeys);
-    }
+    playPreviousKey();
 });
-
-// page specificity –> no sounds when on index.html, only the drone
-// add stuff in localStorage to dictate if a sound must be played within the first 10 seconds

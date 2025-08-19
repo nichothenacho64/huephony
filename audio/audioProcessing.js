@@ -1,8 +1,9 @@
+import { connectWebSocket } from "../webSockets.js";
+
 async function findAudioPath(key) {
     const response = await fetch("audio/audio_filenames.json");
     const jsonData = await response.json();
     const audioFiles = jsonData.files;
-
 
     const file = audioFiles.find(name =>
         name.toUpperCase().startsWith(key.toUpperCase()) &&
@@ -14,53 +15,58 @@ async function findAudioPath(key) {
         return null;
     }
 
-    console.log(file);
-    return "assets/audio_files/" + file;
+    return file; // just the filename, Python expects "A.wav"
 }
 
-export async function playAudio(key) {
-    let audioFileName = await findAudioPath(key);
-    let audio = new Audio(audioFileName);
-    audio.play();
+async function playAudio(key) {
+    const file = await findAudioPath(key);
+    if (!file) return;
+
+    const ws = connectWebSocket();
+    if (ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({ type: "toggle", filename: file }));
+    } else {
+        ws.addEventListener("open", () => {
+            ws.send(JSON.stringify({ type: "toggle", filename: file }));
+        }, { once: true });
+    }
 }
 
-async function getAudioDuration(url) {
+async function getAudioDuration(filename) {
+    const url = "assets/audio_files/" + filename;
     return new Promise(resolve => {
         const audio = new Audio(url);
-        audio.addEventListener("loadedmetadata", () => {
-            resolve(audio.duration || 0);
-        });
+        audio.addEventListener("loadedmetadata", () => resolve(audio.duration || 0));
         audio.addEventListener("error", () => resolve(0));
     });
 }
 
-
 function getWeightedStart(duration, maxTime) {
-    const normalized = Math.min(duration / maxTime, 1);
+    const capped = Math.min(duration, maxTime);
+
+    const normalized = capped / maxTime; 
     const skewFactor = 1 + 4 * normalized;
 
-    const rand = Math.random();
-    return Math.floor(maxTime * Math.pow(rand, skewFactor));
+    const maxStart = maxTime - capped;
+    const start = maxStart * Math.pow(Math.random(), skewFactor);
+
+    return start;
 }
 
-export async function scheduleRandomSounds(disabledKeys) {
-    const maxTime = 120; // seconds (2 minutes)
+export async function scheduleRandomSound(key) {
+    const maxTime = 10; 
 
-    for (const key of disabledKeys) {
-        const url = await findAudioPath(key);
-        if (!url) continue;
+    const file = await findAudioPath(key);
+    if (!file) return;
 
-        const duration = await getAudioDuration(url);
-        if (!duration) continue;
+    const duration = await getAudioDuration(file);
+    if (!duration) return;
 
-        const startTime = getWeightedStart(duration, maxTime) * 1000;
+    const startTime = getWeightedStart(duration, maxTime) * 1000;
 
-        console.log(`Scheduling ${key} at ${startTime / 1000}s (duration ~${duration}s)`);
+    console.log(`Scheduling ${key} -> ${file} at ${startTime / 1000}s (duration ~${duration}s)`);
 
-        setTimeout(() => {
-            playAudio(key);
-        }, startTime);
-    }
+    setTimeout(() => {
+        playAudio(key);
+    }, startTime);
 }
-
-
