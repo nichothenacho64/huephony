@@ -24,9 +24,11 @@ async function playAudio(key) {
 
     const ws = connectWebSocket();
     if (ws.readyState === WebSocket.OPEN) {
+        console.log(`Open: ${file}`)
         ws.send(JSON.stringify({ type: "toggle", filename: file }));
     } else {
         ws.addEventListener("open", () => {
+            console.log(`Play: ${file}`)
             ws.send(JSON.stringify({ type: "toggle", filename: file }));
         }, { once: true });
     }
@@ -41,20 +43,20 @@ async function getAudioDuration(filename) {
     });
 }
 
-function getWeightedStart(duration, maxTime) {
-    const capped = Math.min(duration, maxTime);
+// function getWeightedStart(duration, maxTime) {
+//     const capped = Math.min(duration, maxTime);
 
-    const normalized = capped / maxTime; 
-    const skewFactor = 1 + 4 * normalized;
+//     const normalized = capped / maxTime; 
+//     const skewFactor = 1 + 4 * normalized;
 
-    const maxStart = maxTime - capped;
-    const start = maxStart * Math.pow(Math.random(), skewFactor);
+//     const maxStart = maxTime - capped;
+//     const start = maxStart * Math.pow(Math.random(), skewFactor);
 
-    return start;
-}
+//     return start;
+// }
 
 export async function scheduleRandomSound(key) {
-    const maxTime = 10; 
+    // const maxTime = 10; 
 
     const file = await findAudioPath(key);
     if (!file) return;
@@ -62,11 +64,13 @@ export async function scheduleRandomSound(key) {
     const duration = await getAudioDuration(file);
     if (!duration) return;
 
-    const startTime = getWeightedStart(duration, maxTime) * 1000;
+    // const startTime = getWeightedStart(duration, maxTime) * 1000;
+    const startTime = 0;
 
     console.log(`Scheduling ${key} -> ${file} at ${startTime / 1000}s (duration ~${duration}s)`);
+    playAudio(key);
 
-    setTimeout(() => {
-        playAudio(key);
-    }, startTime);
+    // setTimeout(() => {
+        // playAudio(key);
+    // }, startTime);
 }

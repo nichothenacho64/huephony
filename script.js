@@ -1,5 +1,6 @@
 import { connectWebSocket } from "./webSockets.js"
 import { scheduleRandomSound } from "./audio/audioProcessing.js"
+
 const startHue = 0;
 const defaultSaturation = 100;
 const defaultLightness = 50;
@@ -105,7 +106,7 @@ function getPreviousKey() {
 
             webSocket.send(JSON.stringify({ type: "keyPressed", key: currentKey })); // ! needed?
 
-            if (currentKey === resetKey) { // ! web socket additions
+            if (currentKey === resetKey) {
                 disabledKeys = [];
                 localStorage.removeItem("disabledKeys");
                 webSocket.send(JSON.stringify({ type: "reset" }));
@@ -115,13 +116,12 @@ function getPreviousKey() {
 }
 
 function playPreviousKey() {
-    if (window.location.pathname.endsWith("index.html")) {
-        let previousKey = localStorage.getItem("previousKeyClicked");
-        console.log(previousKey);
-        if (previousKey && previousKey !== resetKey) {
-            scheduleRandomSound(previousKey, webSocket);
-            localStorage.removeItem("previousKeyClicked");
-        }
+    let previousKey = localStorage.getItem("previousKeyClicked");
+    console.log(`Previous key: ${previousKey}`);
+    if (previousKey && previousKey !== resetKey) {
+        console.log(`Key played: '${previousKey}'`);
+        scheduleRandomSound(previousKey, webSocket);
+        localStorage.removeItem("previousKeyClicked");
     }
 }
 
@@ -138,22 +138,21 @@ function disableKey(key) {
     }
 }
 
-function limitDisabledKeys() {
-    if (disabledKeys.length >= maxColours) {
-        const removedKey = disabledKeys.shift();
-        localStorage.setItem("disabledKeys", JSON.stringify(disabledKeys));
-        console.log(`${removedKey} was removed from disabledKeys`);
-    }
-}
-
 function addGradientColours() {
     let gradientBackground = document.getElementById("gradient");
 
     if (!gradientBackground) return;
 
     let backgroundColours = disabledKeys.map(key => letterInformation[key].colour)
-    let gradientColours = [...backgroundColours, backgroundColours[0]].join(", ")
-    gradientBackground.style.background = `conic-gradient(${gradientColours})`;
+    console.log(backgroundColours);
+
+    if (backgroundColours.length === 0) {
+        gradientBackground.style.background = "#1e1e1e"; // is this necessary?
+    } else {
+        let gradientColours = [...backgroundColours, backgroundColours[0]].join(", ")
+        gradientBackground.style.background = `conic-gradient(${gradientColours})`;
+    }
+
 }
 
 function setGradient() {
@@ -163,13 +162,19 @@ function setGradient() {
         if (!disabledKeys.includes(previousKey)) {
             disabledKeys.push(previousKey);
             localStorage.setItem("disabledKeys", JSON.stringify(disabledKeys));
-        };
-        console.log(`Key clicked: '${previousKey}'`);
+        }
     }
-    limitDisabledKeys();
-    addGradientColours();
+
+    if (disabledKeys.length >= maxColours) {
+        const removedKey = disabledKeys.shift();
+        localStorage.setItem("disabledKeys", JSON.stringify(disabledKeys));
+        console.log(`${removedKey} was removed from disabledKeys`);
+    }
+
 
     disabledKeys.forEach(letter => disableKey(letter));
+
+    addGradientColours();
 
     console.log(disabledKeys);
 }
@@ -177,7 +182,24 @@ function setGradient() {
 document.addEventListener("DOMContentLoaded", () => {
     connectWebSocket(webSocket);
     assignLetterHoverColours();
+    getPreviousKey(); 
     setGradient();
-    getPreviousKey();
     playPreviousKey();
 });
+
+webSocket.onmessage = (event) => {
+    const data = JSON.parse(event.data);
+    console.log(`Data type: ${data.type}`)
+    if (data.type === "keyPressed") {
+        if (!disabledKeys.includes(data.key) && data.key !== resetKey && data.key) {
+            disabledKeys.push(data.key);
+            localStorage.setItem("disabledKeys", JSON.stringify(disabledKeys));
+        };
+        setGradient();
+    } else if (data.type === "reset") {
+        console.log("Reset event received via socket");
+        disabledKeys = [];
+        localStorage.removeItem("disabledKeys");
+        setGradient(); 
+    }
+};
