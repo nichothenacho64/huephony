@@ -10,7 +10,7 @@ const maxColours = 6;
 const webSocket = connectWebSocket();
 
 const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
-const letterInformation = { // subject to change!!!!!
+const letterInformation = { 
     "A": { colourLabel: "Colour A", soundLabel: "Sound A" },
     "B": { colourLabel: "Colour B", soundLabel: "Sound B" },
     "C": { colourLabel: "Colour C", soundLabel: "Sound C" },

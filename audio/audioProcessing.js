@@ -15,7 +15,7 @@ async function findAudioPath(key) {
         return null;
     }
 
-    return file; // just the filename, Python expects "A.wav"
+    return file; 
 }
 
 async function playAudio(key) {
@@ -43,34 +43,15 @@ async function getAudioDuration(filename) {
     });
 }
 
-// function getWeightedStart(duration, maxTime) {
-//     const capped = Math.min(duration, maxTime);
-
-//     const normalized = capped / maxTime; 
-//     const skewFactor = 1 + 4 * normalized;
-
-//     const maxStart = maxTime - capped;
-//     const start = maxStart * Math.pow(Math.random(), skewFactor);
-
-//     return start;
-// }
-
 export async function scheduleRandomSound(key) {
-    // const maxTime = 10; 
-
     const file = await findAudioPath(key);
     if (!file) return;
 
     const duration = await getAudioDuration(file);
     if (!duration) return;
 
-    // const startTime = getWeightedStart(duration, maxTime) * 1000;
     const startTime = 0;
 
     console.log(`Scheduling ${key} -> ${file} at ${startTime / 1000}s (duration ~${duration}s)`);
     playAudio(key);
-
-    // setTimeout(() => {
-        // playAudio(key);
-    // }, startTime);
 }
