@@ -22,14 +22,14 @@ async function playAudio(key) {
     const file = await findAudioPath(key);
     if (!file) return;
 
-    const ws = connectWebSocket();
-    if (ws.readyState === WebSocket.OPEN) {
+    const webSocket = connectWebSocket();
+    if (webSocket.readyState === WebSocket.OPEN) {
         console.log(`Open: ${file}`)
-        ws.send(JSON.stringify({ type: "toggle", filename: file }));
+        webSocket.send(JSON.stringify({ type: "toggle", filename: file }));
     } else {
-        ws.addEventListener("open", () => {
+        webSocket.addEventListener("open", () => {
             console.log(`Play: ${file}`)
-            ws.send(JSON.stringify({ type: "toggle", filename: file }));
+            webSocket.send(JSON.stringify({ type: "toggle", filename: file }));
         }, { once: true });
     }
 }
@@ -50,8 +50,6 @@ export async function scheduleRandomSound(key) {
     const duration = await getAudioDuration(file);
     if (!duration) return;
 
-    const startTime = 0;
-
-    console.log(`Scheduling ${key} -> ${file} at ${startTime / 1000}s (duration ~${duration}s)`);
+    console.log(`Scheduling ${key} -> ${file} (duration ~${duration}s)`);
     playAudio(key);
 }

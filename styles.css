@@ -25,6 +25,11 @@ body {
     color: white !important;
 }
 
+a {
+    text-decoration: none;
+    color: white;
+}
+
 #start {
     font-weight: bold;
     background-color: var(--key-colour);
@@ -80,11 +85,6 @@ body {
     background-color: var(--empty-colour);
 }
 
-.empty:hover { /* not showing */
+.empty:hover { 
     background-color: var(--background) !important;
-}
-
-a {
-    text-decoration: none;
-    color: white;
 }

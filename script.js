@@ -42,7 +42,7 @@ const letterInformation = {
 let disabledKeys = JSON.parse(localStorage.getItem("disabledKeys")) || [];
 
 function hslToHex(hueDegrees, saturationPercent, lightnessPercent) {
-    let saturation = saturationPercent / 100; // convert percentages to a range of 0 to 1
+    let saturation = saturationPercent / 100; 
     let lightness = lightnessPercent / 100;
 
     let chroma = (1 - Math.abs(2 * lightness - 1)) * saturation;
@@ -147,12 +147,11 @@ function addGradientColours() {
     console.log(backgroundColours);
 
     if (backgroundColours.length === 0) {
-        gradientBackground.style.background = "#1e1e1e"; // is this necessary?
+        gradientBackground.style.background = "#1e1e1e"; 
     } else {
         let gradientColours = [...backgroundColours, backgroundColours[0]].join(", ")
         gradientBackground.style.background = `conic-gradient(${gradientColours})`;
     }
-
 }
 
 function setGradient() {
