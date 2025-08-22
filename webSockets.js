@@ -1,26 +1,24 @@
-let ws;
+let webSocket;
 
-function resolveWebSocketUrl() {
-    const qpUrl = new URLSearchParams(location.search).get("ws");
-    if (qpUrl) return qpUrl;
+const qpUrl = new URLSearchParams(location.search).get("ws");
+const webSocketUrl = resolveWebSocketUrl(qpUrl);
+
+export function resolveWebSocketUrl(url) {
+    if (url) return url;
     if (location.hostname) return `ws://${location.hostname}:8080`;
     return "ws://localhost:8080";
 }
 
 export function connectWebSocket() {
-    if (ws && ws.readyState === WebSocket.OPEN) return ws;
+    if (webSocket && webSocket.readyState === WebSocket.OPEN) return webSocket;
 
-    ws = new WebSocket(resolveWebSocketUrl());
+    webSocket = new WebSocket(webSocketUrl);
 
-    ws.onopen = () => console.log("Connected to WebSocket server");
-    ws.onclose = () => {
+    webSocket.onopen = () => console.log("Connected to WebSocket server");
+    webSocket.onclose = () => {
         console.log("WebSocket closed, retrying...");
         setTimeout(connectWebSocket, 2000);
     };
 
-    return ws;
-}
-
-export function getWebSocket() {
-    return ws;
+    return webSocket;
 }

@@ -82,7 +82,7 @@ function getLetterColour(letter) {
     return hslToHex(hue, defaultSaturation, defaultLightness);
 }
 
-function assignLetterHoverColours() {
+function assignKeyHoverColours() {
     const styleSheet = document.createElement("style");
 
     letters.forEach(letter => {
@@ -170,17 +170,14 @@ function setGradient() {
         console.log(`${removedKey} was removed from disabledKeys`);
     }
 
-
     disabledKeys.forEach(letter => disableKey(letter));
-
     addGradientColours();
 
     console.log(disabledKeys);
 }
 
 document.addEventListener("DOMContentLoaded", () => {
-    connectWebSocket(webSocket);
-    assignLetterHoverColours();
+    assignKeyHoverColours();
     getPreviousKey(); 
     setGradient();
     playPreviousKey();
